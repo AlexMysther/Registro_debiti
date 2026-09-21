@@ -281,6 +281,7 @@ textarea.backup{
       <span id="subtitle">Il quaderno del bar</span>
     </div>
     <div class="grand"><span id="grandTotal">0,00 €</span><small id="grandLabel">totale da incassare</small></div>
+    <button class="iconbtn" id="btnSync" title="Sincronizzazione fra telefoni" aria-label="Sincronizzazione fra telefoni">☁</button>
     <button class="iconbtn" id="btnPrint" title="Stampa il registro" aria-label="Stampa il registro">⎙</button>
     <button class="iconbtn" id="btnSettings" title="Prezzi e backup" aria-label="Prezzi e backup">☰</button>
   </div>
@@ -303,6 +304,9 @@ textarea.backup{
   <span id="savedNote">I dati restano su questo dispositivo.</span>
   <button id="btnBackupFoot">Backup / ripristino</button>
 </footer>
+
+<script src="firebase-config.js"></script>
+<script type="module" src="sync.js"></script>
 
 <div class="overlay" id="overlay" hidden><div class="panel" id="panel" role="dialog" aria-modal="true"></div></div>
 
@@ -351,13 +355,20 @@ function load(){
   return demoState();
 }
 
-function save(){
+var applicandoRemoto = false;
+
+function saveLocale(){
   if(state.demo) return;             /* l'esempio non sovrascrive nulla */
   try{ localStorage.setItem(KEY, JSON.stringify(state)); }
   catch(err){
     storageOk = false;
     document.getElementById("savedNote").textContent = "Attenzione: questo browser non sta salvando i dati. Fai un backup.";
   }
+}
+
+function save(){
+  saveLocale();
+  if(!applicandoRemoto) inviaModifiche();
 }
 
 /* ============ formati ============ */
@@ -506,6 +517,7 @@ var panel   = document.getElementById("panel");
 
 function openPanel(html, setup){
   delete panel.dataset.detail;
+  delete panel.dataset.sync;
   panel.innerHTML = html;
   overlay.hidden = false;
   if(setup) setup(panel);
@@ -1003,6 +1015,203 @@ function openSettings(focusBackup){
   );
 }
 
+/* ============ sincronizzazione fra telefoni ============ */
+var SYNC_KEY = "registro-debiti-sync-v1";
+var sync = {on:false, codice:null, stato:"spento", offline:false, errore:null};
+var ombra = {};
+
+function payloadDebitore(d){
+  return {name:d.name, entries:d.entries, history:d.history, ord:d.ord || 0};
+}
+function rifaiOmbra(){
+  ombra = {};
+  state.debtors.forEach(function(d){ ombra[d.id] = JSON.stringify(payloadDebitore(d)); });
+  ombra.__prezzi = JSON.stringify(state.presets);
+}
+function inviaModifiche(){
+  if(!sync.on || !window.RegistroSync) return;
+  var presenti = {};
+  state.debtors.forEach(function(d){
+    if(!d.ord) d.ord = Date.now();
+    presenti[d.id] = true;
+    var riga = JSON.stringify(payloadDebitore(d));
+    if(ombra[d.id] !== riga){
+      ombra[d.id] = riga;
+      window.RegistroSync.salvaDebitore(d.id, payloadDebitore(d));
+    }
+  });
+  Object.keys(ombra).forEach(function(k){
+    if(k === "__prezzi" || presenti[k]) return;
+    delete ombra[k];
+    window.RegistroSync.eliminaDebitore(k);
+  });
+  var prezzi = JSON.stringify(state.presets);
+  if(ombra.__prezzi !== prezzi){
+    ombra.__prezzi = prezzi;
+    window.RegistroSync.salvaPrezzi(state.presets);
+  }
+}
+function applicaRemoto(debitori){
+  applicandoRemoto = true;
+  state.demo = false;
+  state.debtors = debitori;
+  rifaiOmbra();
+  saveLocale();
+  applicandoRemoto = false;
+  render();
+}
+function ricordaCodice(codice){
+  try{ localStorage.setItem(SYNC_KEY, JSON.stringify({codice:codice})); }catch(err){}
+}
+function aggiornaStatoSync(){
+  var nota = document.getElementById("savedNote");
+  var tasto = document.getElementById("btnSync");
+  if(sync.stato === "collegato"){
+    nota.textContent = sync.offline
+      ? "Sincronizzato · ora sei offline, le modifiche partono appena torna la rete."
+      : "Sincronizzato con gli altri telefoni · " + sync.codice;
+    tasto.style.color = sync.offline ? "var(--ink-soft)" : "var(--paid)";
+    tasto.style.borderColor = sync.offline ? "var(--line)" : "var(--paid)";
+  }else if(sync.stato === "collegamento"){
+    nota.textContent = "Collegamento in corso…";
+    tasto.style.color = "var(--ink-soft)";
+  }else if(sync.stato === "errore"){
+    nota.textContent = "Sincronizzazione ferma — apri ☁ per vedere perché.";
+    tasto.style.color = "var(--debt)";
+    tasto.style.borderColor = "var(--debt)";
+  }else{
+    nota.textContent = storageOk ? "I dati restano su questo dispositivo." : "Attenzione: questo browser non salva i dati. Usa il backup.";
+    tasto.style.color = "";
+    tasto.style.borderColor = "";
+  }
+}
+function connettiSync(codice){
+  if(!window.RegistroSync){ toast("Sincronizzazione non disponibile qui."); return; }
+  sync.stato = "collegamento";
+  aggiornaStatoSync();
+  window.RegistroSync.connetti(codice, {
+    onDati: function(ev){
+      sync.on = true; sync.codice = codice; sync.stato = "collegato"; sync.errore = null;
+      sync.offline = !!ev.daCache && !ev.inAttesa;
+      if(ev.prima){
+        try{ localStorage.setItem("registro-debiti-prima-del-sync", JSON.stringify(state)); }catch(err){}
+        if(ev.vuoto){
+          /* online non c'è ancora niente: ci mettiamo il registro di questo telefono */
+          ombra = {};
+          if(state.demo) startFresh(true);
+          inviaModifiche();
+          ricordaCodice(codice); aggiornaStatoSync(); render();
+          if(!overlay.hidden && panel.dataset.sync === "1") openSync();
+          return;
+        }
+      }
+      applicaRemoto(ev.debitori);
+      ricordaCodice(codice);
+      aggiornaStatoSync();
+      if(!overlay.hidden && panel.dataset.sync === "1") openSync();
+    },
+    onPrezzi: function(prezzi){
+      state.presets = prezzi;
+      ombra.__prezzi = JSON.stringify(prezzi);
+      saveLocale();
+    },
+    onErrore: function(codiceErrore){
+      sync.errore = codiceErrore; sync.stato = "errore";
+      aggiornaStatoSync();
+    }
+  }).catch(function(err){
+    sync.on = false; sync.stato = "errore";
+    sync.errore = (err && err.message) || "sdk";
+    aggiornaStatoSync();
+    if(!overlay.hidden && panel.dataset.sync === "1") openSync();
+  });
+}
+function scollegaSync(){
+  if(window.RegistroSync) window.RegistroSync.disconnetti();
+  sync = {on:false, codice:null, stato:"spento", offline:false, errore:null};
+  try{ localStorage.removeItem(SYNC_KEY); }catch(err){}
+  aggiornaStatoSync();
+}
+function spiegaErrore(codice){
+  if(codice === "accesso_anonimo") return "Firebase rifiuta l'accesso: attiva <b>Authentication → Sign-in method → Anonymous</b> nella console.";
+  if(codice === "non_configurato") return "Manca la configurazione: compila <code>firebase-config.js</code> seguendo SINCRONIZZAZIONE.md.";
+  if(codice === "permission-denied") return "Le regole di Firestore bloccano la lettura: ricontrolla di averle incollate come da SINCRONIZZAZIONE.md.";
+  if(codice === "unavailable") return "Firebase non risponde — probabilmente manca la rete. Il registro intanto funziona lo stesso.";
+  return "Firebase non si carica (" + codice + "). Se hai aperto il file direttamente dal telefono, la sincronizzazione funziona solo dal sito.";
+}
+function openSync(){
+  var disponibile = !!(window.RegistroSync && window.RegistroSync.configurata());
+  var testa = "<h2>Sincronizzazione</h2>";
+  var corpo;
+
+  if(!disponibile){
+    corpo = '<p class="sub">Per far vedere lo stesso registro su due telefoni serve un progetto Firebase gratuito: i passaggi sono in <b>SINCRONIZZAZIONE.md</b>, dentro il progetto.</p>' +
+      '<p class="sub">Finché non è configurata, ogni telefono tiene il suo registro e si travasa con <b>Backup / Ripristino</b>.</p>' +
+      (window.RegistroSync ? "" : '<p class="sub">Nota: funziona solo aprendo il <b>sito</b> (GitHub Pages), non il file scaricato.</p>');
+  }else if(sync.stato === "collegato"){
+    var link = location.origin + location.pathname + "#r=" + sync.codice;
+    corpo =
+      '<p class="sub">' + (sync.offline
+        ? "Collegato, ma ora <b>senza rete</b>: continua a segnare, parte tutto appena torna la linea."
+        : "Questo telefono è <b>collegato</b>. Quello che segni qui compare sull'altro in pochi secondi.") + "</p>" +
+      '<p class="sub">Codice del registro:</p>' +
+      '<div class="amount-display" style="font-size:17px;text-align:left;word-break:break-all">' + sync.codice + "</div>" +
+      '<textarea class="backup" id="syncLink" readonly style="min-height:70px">' + link + "</textarea>" +
+      '<div class="panel-actions"><button class="btn" id="syncCopy">Copia il link per l\'altro telefono</button></div>' +
+      '<p class="sub">Sull\'altro telefono: apri il link, poi <i>Aggiungi a schermata Home</i>. Chi ha questo link vede e modifica il registro, quindi mandalo solo a chi deve.</p>' +
+      '<div class="divider"></div>' +
+      '<div class="panel-actions"><button class="btn danger" id="syncOff">Scollega questo telefono</button></div>';
+  }else{
+    corpo =
+      (sync.stato === "errore" ? '<p class="sub" style="color:var(--debt)">' + spiegaErrore(sync.errore) + "</p>" : "") +
+      '<p class="sub">Un solo registro condiviso: quello che segna uno lo vede l\'altro. Funziona anche senza rete e si riallinea dopo.</p>' +
+      '<div class="stack">' +
+        '<button class="btn primary" id="syncNew">Crea il registro condiviso</button>' +
+      "</div>" +
+      '<div class="divider"></div>' +
+      '<p class="sub">Oppure entra in un registro già creato, incollando il codice o il link ricevuto:</p>' +
+      '<textarea class="backup" id="syncCode" placeholder="reg-… oppure il link" style="min-height:64px"></textarea>' +
+      '<div class="panel-actions"><button class="btn" id="syncJoin">Entra nel registro</button></div>';
+  }
+
+  openPanel(testa + corpo + '<div class="panel-actions"><button class="btn primary" id="syncDone" data-autofocus>Chiudi</button></div>',
+    function(p){
+      panel.dataset.sync = "1";
+      p.querySelector("#syncDone").addEventListener("click", closePanel);
+      var neo = p.querySelector("#syncNew");
+      if(neo) neo.addEventListener("click", function(){
+        connettiSync(window.RegistroSync.nuovoCodice());
+      });
+      var join = p.querySelector("#syncJoin");
+      if(join) join.addEventListener("click", function(){
+        var codice = window.RegistroSync.pulisciCodice(p.querySelector("#syncCode").value);
+        if(codice.length < 6){ toast("Codice non valido."); return; }
+        connettiSync(codice);
+      });
+      var copia = p.querySelector("#syncCopy");
+      if(copia) copia.addEventListener("click", function(){
+        var campo = p.querySelector("#syncLink");
+        campo.select();
+        var fatto = false;
+        try{ fatto = document.execCommand("copy"); }catch(err){ fatto = false; }
+        if(!fatto && navigator.clipboard){
+          navigator.clipboard.writeText(campo.value).then(function(){ toast("Link copiato."); },
+                                                         function(){ toast("Seleziona il link e copialo a mano."); });
+          return;
+        }
+        toast(fatto ? "Link copiato." : "Seleziona il link e copialo a mano.");
+      });
+      var off = p.querySelector("#syncOff");
+      if(off) off.addEventListener("click", function(){
+        ask({
+          title:"Scollegare questo telefono?", ok:"Scollega", danger:true,
+          text:"Il registro resta sul telefono e online, ma smettono di aggiornarsi a vicenda. Puoi ricollegarti con lo stesso codice."
+        }).then(function(si){ if(si){ scollegaSync(); closePanel(); toast("Telefono scollegato."); } });
+      });
+    }
+  );
+}
+
 function startFresh(silent){
   state = {v:1, demo:false, presets:state.presets.slice(), debtors:[]};
   save();
@@ -1017,6 +1226,7 @@ document.getElementById("btnNew").addEventListener("click", function(){ openPad(
 document.getElementById("btnSettings").addEventListener("click", function(){ openSettings(false); });
 document.getElementById("btnBackupFoot").addEventListener("click", function(){ openSettings(true); });
 document.getElementById("btnPrint").addEventListener("click", function(){ window.print(); });
+document.getElementById("btnSync").addEventListener("click", openSync);
 document.getElementById("btnClearDemo").addEventListener("click", function(){
   startFresh(false);
   toast("Registro pronto. Scrivi il primo nome.");
@@ -1025,6 +1235,18 @@ document.getElementById("btnClearDemo").addEventListener("click", function(){
 if(!storageOk){
   document.getElementById("savedNote").textContent = "Attenzione: questo browser non salva i dati. Usa il backup.";
 }
+
+/* si riaggancia da solo al registro condiviso: link #r=… o ultimo codice usato */
+(function(){
+  var daLink = (location.hash || "").match(/#r=([A-Za-z0-9-]+)/);
+  var salvato = null;
+  try{ salvato = JSON.parse(localStorage.getItem(SYNC_KEY) || "null"); }catch(err){}
+  var codice = daLink ? daLink[1] : (salvato && salvato.codice);
+  if(!codice) return;
+  var vai = function(){ connettiSync(codice); };
+  if(window.RegistroSync) vai();
+  else window.addEventListener("registro-sync-pronto", vai, {once:true});
+})();
 
 /* i nomi scritti a mano seguono il colore del tema */
 if(window.matchMedia){
