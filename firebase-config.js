@@ -9,8 +9,8 @@
  * il codice del registro, che e' lungo e casuale.
  */
 window.REGISTRO_FIREBASE = {
-  apiKey: "INCOLLA_QUI",
-  authDomain: "INCOLLA_QUI.firebaseapp.com",
-  projectId: "INCOLLA_QUI",
-  appId: "INCOLLA_QUI"
+  apiKey: "AIzaSyBIdHgmIhFDWqLaL0ZBW7Hg8Krs9tu2Kjw",
+  authDomain: "registro-debiti.firebaseapp.com",
+  projectId: "registro-debiti",
+  appId: "1:734929531774:web:17d0989e0e87e19ec7792f"
 };
