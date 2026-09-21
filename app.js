@@ -716,15 +716,17 @@ var SYNC_KEY = "registro-debiti-sync-v1";
 var sync = {on:false, codice:null, stato:"spento", offline:false, errore:null};
 var ombra = {};
 
-/* Firestore non accetta array dentro array: il nome scritto a mano usa
-   strokes come array di array di [x,y,peso], quindi va appiattito in
-   oggetti {x,y,w} solo per il viaggio da/verso il database. */
+/* Firestore non accetta array dentro array, a nessun livello: il nome
+   scritto a mano usa strokes come array di array di [x,y,peso]. Ogni
+   tratto va incapsulato in un oggetto {p:[...]}, così l'array "strokes"
+   contiene solo oggetti e non altri array. Solo per il viaggio da/verso
+   il database: il disegno e i calcoli in locale restano con gli array. */
 function nomePerFirestore(name){
   if(!name || name.type !== "ink") return name;
   return {
     type:"ink", aspect:name.aspect,
     strokes:(name.strokes || []).map(function(s){
-      return s.map(function(p){ return {x:p[0], y:p[1], w:p[2]}; });
+      return { p: s.map(function(p){ return {x:p[0], y:p[1], w:p[2]}; }) };
     })
   };
 }
@@ -733,7 +735,7 @@ function nomeDaFirestore(name){
   return {
     type:"ink", aspect:name.aspect,
     strokes:(name.strokes || []).map(function(s){
-      return s.map(function(p){ return [p.x, p.y, p.w]; });
+      return (s.p || []).map(function(p){ return [p.x, p.y, p.w]; });
     })
   };
 }
