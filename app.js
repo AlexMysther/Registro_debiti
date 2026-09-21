@@ -716,8 +716,29 @@ var SYNC_KEY = "registro-debiti-sync-v1";
 var sync = {on:false, codice:null, stato:"spento", offline:false, errore:null};
 var ombra = {};
 
+/* Firestore non accetta array dentro array: il nome scritto a mano usa
+   strokes come array di array di [x,y,peso], quindi va appiattito in
+   oggetti {x,y,w} solo per il viaggio da/verso il database. */
+function nomePerFirestore(name){
+  if(!name || name.type !== "ink") return name;
+  return {
+    type:"ink", aspect:name.aspect,
+    strokes:(name.strokes || []).map(function(s){
+      return s.map(function(p){ return {x:p[0], y:p[1], w:p[2]}; });
+    })
+  };
+}
+function nomeDaFirestore(name){
+  if(!name || name.type !== "ink") return name;
+  return {
+    type:"ink", aspect:name.aspect,
+    strokes:(name.strokes || []).map(function(s){
+      return s.map(function(p){ return [p.x, p.y, p.w]; });
+    })
+  };
+}
 function payloadDebitore(d){
-  return {name:d.name, entries:d.entries, history:d.history, ord:d.ord || 0};
+  return {name:nomePerFirestore(d.name), entries:d.entries, history:d.history, ord:d.ord || 0};
 }
 function rifaiOmbra(){
   ombra = {};
@@ -749,6 +770,7 @@ function inviaModifiche(){
 }
 function applicaRemoto(debitori){
   applicandoRemoto = true;
+  debitori.forEach(function(d){ d.name = nomeDaFirestore(d.name); });
   state.debtors = debitori;
   rifaiOmbra();
   saveLocale();
