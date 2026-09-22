@@ -5,14 +5,22 @@
 var KEY = "registro-debiti-v1";
 /* alza PRESETS_V di 1 ogni volta che cambi le voci qui sotto:
    al prossimo avvio i prezzi salvati vengono rifatti da questi default. */
-var PRESETS_V = 2;
+var PRESETS_V = 3;
+/* sezioni dei tasti veloci: l'ordine qui e' l'ordine con cui compaiono */
+var CATEGORIE = [
+  {id:"caffe", n:"Caffè"},
+  {id:"bibite", n:"Bibite"},
+  {id:"birre", n:"Birre"},
+  {id:"cocktail", n:"Cocktail"},
+  {id:"cibo", n:"Cibo"}
+];
 var DEFAULT_PRESETS = [
-  {id:"p1", n:"咖啡", c:120},
-  {id:"p2", n:"卡普奇诺", c:150},
-  {id:"p3", n:"牛角包", c:130},
-  {id:"p4", n:"水", c:100},
-  {id:"p5", n:"中啤酒", c:250},
-  {id:"p6", n:"小啤酒", c:350},
+  {id:"p1", n:"咖啡", c:120, cat:"caffe"},
+  {id:"p2", n:"卡普奇诺", c:150, cat:"caffe"},
+  {id:"p3", n:"牛角包", c:130, cat:"cibo"},
+  {id:"p4", n:"水", c:100, cat:"bibite"},
+  {id:"p5", n:"中啤酒", c:250, cat:"birre"},
+  {id:"p6", n:"小啤酒", c:350, cat:"birre"},
 ];
 
 var state = null;
@@ -451,21 +459,46 @@ function removeEntry(did, eid){
   });
 }
 
+/* raggruppa i tasti veloci per sezione (Caffè, Bibite, Birre, ...),
+   nell'ordine di CATEGORIE; le voci senza una categoria nota finiscono
+   in una sezione "Altro" in fondo. */
+function presetsPerSezioni(){
+  var gruppi = {};
+  state.presets.forEach(function(p){
+    var cat = p.cat || "altro";
+    (gruppi[cat] = gruppi[cat] || []).push(p);
+  });
+  var note = {};
+  function bottoni(items){
+    return items.map(function(p){
+      return '<button class="preset" type="button" data-c="' + p.c + '" data-n="' + String(p.n).replace(/"/g,"&quot;") + '">' +
+        "<span>" + p.n + "</span><b>" + cents(p.c) + "</b></button>";
+    }).join("");
+  }
+  function sezione(nome, items){
+    if(!items || !items.length) return "";
+    return '<div class="presetgroup"><h3 class="presetcat">' + esc(nome) + '</h3><div class="presets">' + bottoni(items) + "</div></div>";
+  }
+  var html = "";
+  CATEGORIE.forEach(function(c){ note[c.id] = true; html += sezione(c.n, gruppi[c.id]); });
+  var resto = [];
+  Object.keys(gruppi).forEach(function(k){ if(!note[k]) resto = resto.concat(gruppi[k]); });
+  html += sezione("Altro", resto);
+  return html;
+}
+
 function openAmount(id){
   var d = byId(id); if(!d) return;
   var added = [];
   var digits = "";
 
-  var presets = state.presets.map(function(p){
-    return '<button class="preset" type="button" data-c="' + p.c + '" data-n="' + String(p.n).replace(/"/g,"&quot;") + '">' +
-      "<span>" + p.n + "</span><b>" + cents(p.c) + "</b></button>";
-  }).join("");
+  var presets = presetsPerSezioni();
 
   openPanel(
     "<h2>" + (d.name.type === "text" ? d.name.value : "Segna sul conto") + "</h2>" +
     '<div id="panelName" style="margin:2px 0 8px"></div>' +
     '<p class="sub">Tocca quello che ha preso: si aggiunge subito. Per due caffè, tocca due volte.</p>' +
-    '<div class="presets">' + presets + "</div>" +
+    presets +
     '<p class="session" id="sessionLine"></p>' +
     '<div class="divider"></div>' +
     '<button class="btn" type="button" id="amtMore" style="width:100%">Altro importo o pagamento…</button>' +
@@ -628,6 +661,10 @@ function openSettings(focusBackup){
     function(p){
       var ed = p.querySelector("#presetEditor");
 
+      var opzioniCategorie = CATEGORIE.map(function(c){
+        return '<option value="' + c.id + '">' + esc(c.n) + "</option>";
+      }).join("") + '<option value="altro">Altro</option>';
+
       function drawPresets(){
         ed.innerHTML = "";
         state.presets.forEach(function(pr){
@@ -636,8 +673,11 @@ function openSettings(focusBackup){
           row.innerHTML =
             '<input class="n" value="' + String(pr.n).replace(/"/g,"&quot;") + '" aria-label="Nome voce">' +
             '<input class="p" value="' + cents(pr.c) + '" inputmode="decimal" aria-label="Prezzo">' +
+            '<select class="cat" aria-label="Sezione">' + opzioniCategorie + "</select>" +
             '<button class="iconbtn" aria-label="Togli voce">✕</button>';
           var inputs = row.querySelectorAll("input");
+          var sel = row.querySelector("select");
+          sel.value = pr.cat || "altro";
           inputs[0].addEventListener("change", function(){ pr.n = this.value.trim() || "Voce"; save(); });
           inputs[1].addEventListener("change", function(){
             var v = parseFloat(this.value.replace(",", "."));
@@ -645,6 +685,7 @@ function openSettings(focusBackup){
             this.value = cents(pr.c);
             save();
           });
+          sel.addEventListener("change", function(){ pr.cat = this.value; save(); });
           row.querySelector("button").addEventListener("click", function(){
             state.presets = state.presets.filter(function(x){ return x.id !== pr.id; });
             save(); drawPresets();
@@ -655,7 +696,7 @@ function openSettings(focusBackup){
       drawPresets();
 
       p.querySelector("#addPreset").addEventListener("click", function(){
-        state.presets.push({id:uid(), n:"Nuova voce", c:100});
+        state.presets.push({id:uid(), n:"Nuova voce", c:100, cat:"altro"});
         save(); drawPresets();
       });
 

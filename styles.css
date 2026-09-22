@@ -187,7 +187,13 @@ button{font:inherit; color:inherit; cursor:pointer}
 }
 
 /* tastierino e importi */
-.presets{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px; margin-bottom:14px}
+.presetgroup{margin-bottom:14px}
+.presetcat{
+  font-size:12px; text-transform:uppercase; letter-spacing:.04em; font-weight:700;
+  color:var(--ink-soft); margin:0 0 6px;
+}
+.presets{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px}
+.presetgroup .presets{margin-bottom:0}
 .preset{
   padding:12px 10px; border-radius:10px; border:1px solid var(--line); background:var(--paper-2);
   display:flex; justify-content:space-between; align-items:center; gap:8px; font-weight:600; font-size:14px; text-align:left;
@@ -232,6 +238,10 @@ textarea.backup{
 }
 .preseted input.n{flex:1 1 auto}
 .preseted input.p{width:88px; font-family:"IBM Plex Mono",monospace; text-align:right}
+.preseted select.cat{
+  padding:10px 6px; border-radius:8px; border:1px solid var(--rule); background:var(--paper-2);
+  color:var(--ink); font-size:13px; max-width:110px;
+}
 .toast{
   position:fixed; left:50%; transform:translateX(-50%); bottom:calc(20px + env(safe-area-inset-bottom,0px));
   background:var(--ink); color:var(--paper); padding:10px 16px; border-radius:999px; font-size:14px;
