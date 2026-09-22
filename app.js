@@ -773,6 +773,21 @@ function inviaModifiche(){
 function applicaRemoto(debitori){
   applicandoRemoto = true;
   debitori.forEach(function(d){ d.name = nomeDaFirestore(d.name); });
+  /* aggiorna gli oggetti debitore che esistono gia' invece di sostituirli:
+     un pannello aperto (es. "segna un debito") tiene in mano il vecchio
+     oggetto, e se lo sostituissimo i tap successivi scriverebbero su un
+     oggetto ormai staccato dal registro, perdendosi in silenzio. */
+  var esistenti = {};
+  state.debtors.forEach(function(d){ esistenti[d.id] = d; });
+  debitori = debitori.map(function(nuovo){
+    var vecchio = esistenti[nuovo.id];
+    if(!vecchio) return nuovo;
+    vecchio.name = nuovo.name;
+    vecchio.entries = nuovo.entries;
+    vecchio.history = nuovo.history;
+    vecchio.ord = nuovo.ord;
+    return vecchio;
+  });
   state.debtors = debitori;
   rifaiOmbra();
   saveLocale();
