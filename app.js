@@ -265,7 +265,7 @@ function askPassword(title){
         "<h2>" + title + "</h2>" +
         '<p class="sub">请输入密码。</p>' +
         '<div style="display:flex;gap:8px">' +
-          '<input class="typedinput" id="pwIn" type="password" placeholder="密码" autocomplete="off" style="font-family:inherit;font-size:18px;flex:1;min-width:0">' +
+          '<input class="typedinput" id="pwIn" type="password" inputmode="numeric" pattern="[0-9]*" placeholder="密码" autocomplete="off" style="font-family:inherit;font-size:18px;flex:1;min-width:0">' +
           '<button type="button" class="iconbtn" id="pwEye" aria-label="显示密码" style="flex:none;height:auto;min-height:44px">👁</button>' +
         "</div>" +
         '<p class="sub" id="pwErr" style="color:var(--debt);margin:8px 0 0" hidden>密码错误。</p>' +
