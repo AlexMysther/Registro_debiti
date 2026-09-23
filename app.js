@@ -82,6 +82,21 @@ function total(d){ return d.entries.reduce(function(s,x){ return s + x.c; }, 0);
 function grand(){ return state.debtors.reduce(function(s,d){ return s + total(d); }, 0); }
 function nameText(d){ return d.name.type === "text" ? d.name.value : "这个人"; }
 
+// 把连续且同名同价的记录合并成一条 "xN"（例如连续点3次牛角包）
+function groupEntries(list){
+  var groups = [];
+  list.forEach(function(x){
+    var name = x.n || "";
+    var last = groups[groups.length - 1];
+    if(name && last && last.n === name && last.c === x.c){
+      last.items.push(x);
+    }else{
+      groups.push({n:name, c:x.c, items:[x]});
+    }
+  });
+  return groups;
+}
+
 /* ============ scrittura a mano ============ */
 function inkColor(){
   var v = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim();
@@ -169,18 +184,20 @@ function render(){
         ? '<span class="settled-note">已结清 ' + day(last.t) + " — " + eur(last.c) + "</span>"
         : '<span class="empty">没有欠款</span>';
     }else{
-      d.entries.forEach(function(x, i){
-        if(i > 0 || x.c < 0){
+      groupEntries(d.entries).forEach(function(g, i){
+        if(i > 0 || g.c < 0){
           var op = document.createElement("span");
           op.className = "op";
-          op.textContent = x.c < 0 ? "−" : "+";
+          op.textContent = g.c < 0 ? "−" : "+";
           calc.appendChild(op);
         }
+        var qty = g.items.length > 1 ? " ×" + g.items.length : "";
+        var last = g.items[g.items.length - 1];
         var chip = document.createElement("button");
-        chip.className = "chip" + (x.c < 0 ? " pay" : "");
-        chip.textContent = cents(Math.abs(x.c));
-        chip.title = (x.n ? x.n + " — " : "") + day(x.t) + " · 点击删除";
-        chip.addEventListener("click", function(){ removeEntry(d.id, x.id); });
+        chip.className = "chip" + (g.c < 0 ? " pay" : "");
+        chip.textContent = cents(Math.abs(g.c) * g.items.length) + qty;
+        chip.title = (g.n ? g.n + qty + " — " : "") + day(last.t) + " · 点击删除最后一项";
+        chip.addEventListener("click", function(){ removeEntry(d.id, last.id); });
         calc.appendChild(chip);
       });
     }
@@ -566,7 +583,11 @@ function openAmount(id){
         disp.textContent = eur(value());
         if(!added.length){ line.innerHTML = ""; return; }
         line.innerHTML = "刚刚添加：" +
-          added.map(function(x){ return (x.c < 0 ? "−" : "") + cents(Math.abs(x.c)); }).join(" + ") +
+          groupEntries(added).map(function(g){
+            var qty = g.items.length > 1 ? " ×" + g.items.length : "";
+            var label = g.n ? esc(g.n) + qty + " " : "";
+            return label + "(" + (g.c < 0 ? "−" : "") + cents(Math.abs(g.c) * g.items.length) + ")";
+          }).join(" + ") +
           ' &nbsp;<button type="button" id="undoAdd" style="background:none;border:0;text-decoration:underline;color:var(--ink-soft);font-family:inherit">撤销上一项</button>';
         line.querySelector("#undoAdd").addEventListener("click", function(){
           var last = added.pop();
@@ -617,10 +638,12 @@ function openDetail(id){
   var d = byId(id); if(!d) return;
   var t = total(d);
   var list = d.entries.length
-    ? d.entries.map(function(x){
-        return '<li><span class="d">' + day(x.t) + (x.n ? " · " + x.n : "") + "</span>" +
-          '<span class="v' + (x.c < 0 ? " pay" : "") + '">' + (x.c < 0 ? "−" : "") + cents(Math.abs(x.c)) + "</span>" +
-          '<button class="x" data-e="' + x.id + '" aria-label="删除此项">✕</button></li>';
+    ? groupEntries(d.entries).map(function(g){
+        var qty = g.items.length > 1 ? " ×" + g.items.length : "";
+        var last = g.items[g.items.length - 1];
+        return '<li><span class="d">' + day(last.t) + (g.n ? " · " + esc(g.n) + qty : "") + "</span>" +
+          '<span class="v' + (g.c < 0 ? " pay" : "") + '">' + (g.c < 0 ? "−" : "") + cents(Math.abs(g.c) * g.items.length) + "</span>" +
+          '<button class="x" data-e="' + last.id + '" aria-label="删除此项">✕</button></li>';
       }).join("")
     : '<li><span class="d">没有未结欠款。</span></li>';
 
