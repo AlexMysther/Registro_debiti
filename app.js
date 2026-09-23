@@ -8,11 +8,11 @@ var KEY = "registro-debiti-v1";
 var PRESETS_V = 3;
 /* sezioni dei tasti veloci: l'ordine qui e' l'ordine con cui compaiono */
 var CATEGORIE = [
-  {id:"caffe", n:"Caffè"},
-  {id:"bibite", n:"Bibite"},
-  {id:"birre", n:"Birre"},
-  {id:"cocktail", n:"Cocktail"},
-  {id:"cibo", n:"Cibo"}
+  {id:"caffe", n:"咖啡"},
+  {id:"bibite", n:"饮料"},
+  {id:"birre", n:"啤酒"},
+  {id:"cocktail", n:"鸡尾酒"},
+  {id:"cibo", n:"食物"}
 ];
 var DEFAULT_PRESETS = [
   {id:"p1", n:"咖啡", c:120, cat:"caffe"},
@@ -62,7 +62,7 @@ function saveLocale(){
   try{ localStorage.setItem(KEY, JSON.stringify(state)); }
   catch(err){
     storageOk = false;
-    document.getElementById("savedNote").textContent = "Attenzione: questo browser non sta salvando i dati. Fai un backup.";
+    document.getElementById("savedNote").textContent = "注意：此浏览器没有保存数据，请做备份。";
   }
 }
 
@@ -72,15 +72,15 @@ function save(){
 }
 
 /* ============ formati ============ */
-function cents(c){ return (c/100).toFixed(2).replace(".", ","); }
+function cents(c){ return (c/100).toFixed(2); }
 function eur(c){ return cents(c) + " €"; }
 function day(t){
-  try{ return new Date(t).toLocaleDateString("it-IT", {day:"2-digit", month:"2-digit"}); }
+  try{ return new Date(t).toLocaleDateString("zh-CN", {day:"2-digit", month:"2-digit"}); }
   catch(err){ return ""; }
 }
 function total(d){ return d.entries.reduce(function(s,x){ return s + x.c; }, 0); }
 function grand(){ return state.debtors.reduce(function(s,d){ return s + total(d); }, 0); }
-function nameText(d){ return d.name.type === "text" ? d.name.value : "questa persona"; }
+function nameText(d){ return d.name.type === "text" ? d.name.value : "这个人"; }
 
 /* ============ scrittura a mano ============ */
 function inkColor(){
@@ -135,7 +135,7 @@ function render(){
     var empty = document.createElement("div");
     empty.className = "row";
     empty.style.backgroundImage = "none";
-    empty.innerHTML = '<div class="namecell" style="grid-column:1/-1"><span class="typed" style="color:var(--ink-soft);font-size:22px">Registro vuoto — aggiungi il primo nome qui sotto.</span></div>';
+    empty.innerHTML = '<div class="namecell" style="grid-column:1/-1"><span class="typed" style="color:var(--ink-soft);font-size:22px">账本是空的——请在下方添加第一个名字。</span></div>';
     frag.appendChild(empty);
   }
 
@@ -147,8 +147,8 @@ function render(){
 
     var nameBtn = document.createElement("button");
     nameBtn.className = "namecell";
-    nameBtn.title = "Apri il conto di " + nameText(d);
-    nameBtn.setAttribute("aria-label", "Apri il conto di " + nameText(d));
+    nameBtn.title = "打开" + nameText(d) + "的账单";
+    nameBtn.setAttribute("aria-label", "打开" + nameText(d) + "的账单");
     if(d.name.type === "ink"){
       var cv = document.createElement("canvas");
       nameBtn.appendChild(cv);
@@ -166,8 +166,8 @@ function render(){
     if(!d.entries.length){
       var last = d.history[d.history.length-1];
       calc.innerHTML = last
-        ? '<span class="settled-note">saldato il ' + day(last.t) + " — " + eur(last.c) + "</span>"
-        : '<span class="empty">nessun debito</span>';
+        ? '<span class="settled-note">已结清 ' + day(last.t) + " — " + eur(last.c) + "</span>"
+        : '<span class="empty">没有欠款</span>';
     }else{
       d.entries.forEach(function(x, i){
         if(i > 0 || x.c < 0){
@@ -179,7 +179,7 @@ function render(){
         var chip = document.createElement("button");
         chip.className = "chip" + (x.c < 0 ? " pay" : "");
         chip.textContent = cents(Math.abs(x.c));
-        chip.title = (x.n ? x.n + " — " : "") + day(x.t) + " · tocca per togliere";
+        chip.title = (x.n ? x.n + " — " : "") + day(x.t) + " · 点击删除";
         chip.addEventListener("click", function(){ removeEntry(d.id, x.id); });
         calc.appendChild(chip);
       });
@@ -192,8 +192,8 @@ function render(){
     var add = document.createElement("button");
     add.className = "addbtn";
     add.textContent = "+";
-    add.title = "Segna un debito a " + nameText(d);
-    add.setAttribute("aria-label", "Segna un debito a " + nameText(d));
+    add.title = "给" + nameText(d) + "记一笔欠款";
+    add.setAttribute("aria-label", "给" + nameText(d) + "记一笔欠款");
     add.addEventListener("click", function(){ openAmount(d.id); });
 
     row.appendChild(nameBtn); row.appendChild(calc); row.appendChild(tot); row.appendChild(add);
@@ -207,7 +207,7 @@ function render(){
   document.getElementById("grandTotal").textContent = eur(g);
   document.getElementById("sheetTotal").textContent = eur(g);
   document.getElementById("subtitle").textContent =
-    state.debtors.length + (state.debtors.length === 1 ? " persona" : " persone") + " sul registro";
+    "账本上有 " + state.debtors.length + " 人";
 }
 
 /* ============ finestre ============ */
@@ -240,14 +240,55 @@ function ask(opts){
         "<h2>" + opts.title + "</h2>" +
         '<p class="sub">' + (opts.text || "") + "</p>" +
         '<div class="panel-actions">' +
-          '<button class="btn" data-no>' + (opts.cancel || "Annulla") + "</button>" +
-          '<button class="btn ' + (opts.danger ? "danger" : "primary") + '" data-yes data-autofocus>' + (opts.ok || "Conferma") + "</button>" +
+          '<button class="btn" data-no>' + (opts.cancel || "取消") + "</button>" +
+          '<button class="btn ' + (opts.danger ? "danger" : "primary") + '" data-yes data-autofocus>' + (opts.ok || "确认") + "</button>" +
         "</div>" +
       "</div>";
     document.body.appendChild(ov);
     ov.querySelector("[data-autofocus]").focus();
     function done(v){ ov.remove(); resolve(v); }
     ov.querySelector("[data-yes]").addEventListener("click", function(){ done(true); });
+    ov.querySelector("[data-no]").addEventListener("click", function(){ done(false); });
+    ov.addEventListener("click", function(e){ if(e.target === ov) done(false); });
+  });
+}
+
+/* password per le azioni che eliminano voci o persone (cambiala qui) */
+var PASSWORD_ELIMINA = "1234";
+function askPassword(title){
+  return new Promise(function(resolve){
+    var ov = document.createElement("div");
+    ov.className = "overlay";
+    ov.style.zIndex = "70";
+    ov.innerHTML =
+      '<div class="panel" role="dialog" aria-modal="true" style="max-width:420px">' +
+        "<h2>" + title + "</h2>" +
+        '<p class="sub">请输入密码。</p>' +
+        '<div style="display:flex;gap:8px">' +
+          '<input class="typedinput" id="pwIn" type="password" placeholder="密码" autocomplete="off" style="font-family:inherit;font-size:18px;flex:1;min-width:0">' +
+          '<button type="button" class="iconbtn" id="pwEye" aria-label="显示密码" style="flex:none;height:auto;min-height:44px">👁</button>' +
+        "</div>" +
+        '<p class="sub" id="pwErr" style="color:var(--debt);margin:8px 0 0" hidden>密码错误。</p>' +
+        '<div class="panel-actions">' +
+          '<button class="btn" data-no>取消</button>' +
+          '<button class="btn danger" data-yes>确认</button>' +
+        "</div>" +
+      "</div>";
+    document.body.appendChild(ov);
+    var inp = ov.querySelector("#pwIn");
+    inp.focus();
+    function done(v){ ov.remove(); resolve(v); }
+    function check(){
+      if(inp.value === PASSWORD_ELIMINA){ done(true); return; }
+      ov.querySelector("#pwErr").hidden = false;
+      inp.value = ""; inp.focus();
+    }
+    ov.querySelector("#pwEye").addEventListener("click", function(){
+      inp.type = inp.type === "password" ? "text" : "password";
+      inp.focus();
+    });
+    inp.addEventListener("keydown", function(e){ if(e.key === "Enter") check(); });
+    ov.querySelector("[data-yes]").addEventListener("click", check);
     ov.querySelector("[data-no]").addEventListener("click", function(){ done(false); });
     ov.addEventListener("click", function(e){ if(e.target === ov) done(false); });
   });
@@ -268,22 +309,22 @@ function toast(msg){
 
 /* ============ tavoletta di scrittura ============ */
 function openPad(debtor){
-  var titolo = debtor ? "Riscrivi il nome" : "Nuovo debitore";
+  var titolo = debtor ? "重写名字" : "新欠款人";
   openPanel(
-    "<h2>" + titolo + '</h2><p class="sub">Scrivi il nome con il dito o con la penna, come sul quaderno.</p>' +
-    '<div class="padwrap"><canvas id="pad"></canvas><div class="padhint" id="padHint">scrivi qui</div></div>' +
+    "<h2>" + titolo + '</h2><p class="sub">用手指或笔写下名字，就像写在本子上。</p>' +
+    '<div class="padwrap"><canvas id="pad"></canvas><div class="padhint" id="padHint">在这里写</div></div>' +
     '<div class="padtools">' +
-      '<button type="button" id="padUndo">↶ Ultimo tratto</button>' +
-      '<button type="button" id="padClear">Cancella tutto</button>' +
-      '<button type="button" id="padType">⌨ Usa la tastiera</button>' +
+      '<button type="button" id="padUndo">↶ 撤销上一笔</button>' +
+      '<button type="button" id="padClear">全部清除</button>' +
+      '<button type="button" id="padType">⌨ 用键盘输入</button>' +
     "</div>" +
     '<div id="typedWrap" hidden style="margin-top:10px">' +
-      '<input class="typedinput" id="typedName" placeholder="Nome" maxlength="28" value="' +
+      '<input class="typedinput" id="typedName" placeholder="名字" maxlength="28" value="' +
         (debtor && debtor.name.type === "text" ? debtor.name.value.replace(/"/g, "&quot;") : "") + '">' +
     "</div>" +
     '<div class="panel-actions">' +
-      '<button class="btn" id="padCancel">Annulla</button>' +
-      '<button class="btn primary" id="padSave">Salva nome</button>' +
+      '<button class="btn" id="padCancel">取消</button>' +
+      '<button class="btn primary" id="padSave">保存名字</button>' +
     "</div>",
     function(p){
       var cv = p.querySelector("#pad");
@@ -375,7 +416,7 @@ function openPad(debtor){
         p.querySelector(".padwrap").hidden = typing;
         p.querySelector("#padUndo").hidden = typing;
         p.querySelector("#padClear").hidden = typing;
-        this.textContent = typing ? "✎ Torna a scrivere a mano" : "⌨ Usa la tastiera";
+        this.textContent = typing ? "✎ 改为手写" : "⌨ 用键盘输入";
         if(typing) p.querySelector("#typedName").focus();
       });
       p.querySelector("#padCancel").addEventListener("click", closePanel);
@@ -383,10 +424,10 @@ function openPad(debtor){
         var name;
         if(typing){
           var v = p.querySelector("#typedName").value.trim();
-          if(!v){ toast("Scrivi prima il nome."); return; }
+          if(!v){ toast("请先写名字。"); return; }
           name = {type:"text", value:v};
         }else{
-          if(!strokes.length){ toast("Scrivi il nome sul foglio."); return; }
+          if(!strokes.length){ toast("请在纸上写名字。"); return; }
           name = normalize(strokes, cssH);
         }
         if(debtor){
@@ -440,7 +481,7 @@ function removeEntry(did, eid){
   for(var i=0;i<d.entries.length;i++) if(d.entries[i].id === eid) x = d.entries[i];
   if(!x) return;
   var pagamento = x.c < 0;
-  var etichetta = x.n || (pagamento ? "Pagamento" : "Importo scritto a mano");
+  var etichetta = x.n || (pagamento ? "付款" : "手动输入的金额");
   ask({
     lead:
       '<div class="askitem">' +
@@ -448,9 +489,9 @@ function removeEntry(did, eid){
         '<span class="askitem-amt' + (pagamento ? " paid" : "") + '">' +
           (pagamento ? "− " : "") + cents(Math.abs(x.c)) + " €</span>" +
       "</div>",
-    title: pagamento ? "Togliere questo pagamento?" : "Togliere questa voce dal conto?",
-    text: "Segnato il " + day(x.t) + ".",
-    ok:"Togli", danger:true
+    title: pagamento ? "删除这笔付款？" : "从账单中删除这一项？",
+    text: "记录于 " + day(x.t) + "。",
+    ok:"删除", danger:true
   }).then(function(yes){
     if(!yes) return;
     d.entries = d.entries.filter(function(y){ return y.id !== eid; });
@@ -483,7 +524,7 @@ function presetsPerSezioni(){
   CATEGORIE.forEach(function(c){ note[c.id] = true; html += sezione(c.n, gruppi[c.id]); });
   var resto = [];
   Object.keys(gruppi).forEach(function(k){ if(!note[k]) resto = resto.concat(gruppi[k]); });
-  html += sezione("Altro", resto);
+  html += sezione("其他", resto);
   return html;
 }
 
@@ -495,26 +536,26 @@ function openAmount(id){
   var presets = presetsPerSezioni();
 
   openPanel(
-    "<h2>" + (d.name.type === "text" ? d.name.value : "Segna sul conto") + "</h2>" +
+    "<h2>" + (d.name.type === "text" ? d.name.value : "记入账单") + "</h2>" +
     '<div id="panelName" style="margin:2px 0 8px"></div>' +
-    '<p class="sub">Tocca quello che ha preso: si aggiunge subito. Per due caffè, tocca due volte.</p>' +
+    '<p class="sub">点击客人拿的东西，会立刻记上。两杯咖啡就点两次。</p>' +
     presets +
     '<p class="session" id="sessionLine"></p>' +
     '<div class="divider"></div>' +
-    '<button class="btn" type="button" id="amtMore" style="width:100%">Altro importo o pagamento…</button>' +
+    '<button class="btn" type="button" id="amtMore" style="width:100%">其他金额或付款…</button>' +
     '<div id="amtCustom" hidden style="margin-top:12px">' +
     '<div class="amount-display" id="amtDisp">0,00 €</div>' +
     '<div class="keypad">' +
       "<button type='button' data-k='1'>1</button><button type='button' data-k='2'>2</button><button type='button' data-k='3'>3</button>" +
       "<button type='button' data-k='4'>4</button><button type='button' data-k='5'>5</button><button type='button' data-k='6'>6</button>" +
       "<button type='button' data-k='7'>7</button><button type='button' data-k='8'>8</button><button type='button' data-k='9'>9</button>" +
-      "<button type='button' data-k='0'>0</button><button type='button' data-k='00'>00</button><button type='button' data-k='del' aria-label='Cancella'>⌫</button>" +
+      "<button type='button' data-k='0'>0</button><button type='button' data-k='00'>00</button><button type='button' data-k='del' aria-label='删除'>⌫</button>" +
     "</div>" +
     '<div class="panel-actions">' +
-      '<button class="btn danger" id="amtDebt">+ Debito</button>' +
-      '<button class="btn pay" id="amtPay">− Pagamento</button>' +
+      '<button class="btn danger" id="amtDebt">+ 欠款</button>' +
+      '<button class="btn pay" id="amtPay">− 付款</button>' +
     "</div></div>" +
-    '<div class="panel-actions"><button class="btn primary" id="amtDone" data-autofocus>Fatto</button></div>',
+    '<div class="panel-actions"><button class="btn primary" id="amtDone" data-autofocus>完成</button></div>',
     function(p){
       paintPanelName(p, d);
       var disp = p.querySelector("#amtDisp");
@@ -524,9 +565,9 @@ function openAmount(id){
       function refresh(){
         disp.textContent = eur(value());
         if(!added.length){ line.innerHTML = ""; return; }
-        line.innerHTML = "Aggiunto ora: " +
+        line.innerHTML = "刚刚添加：" +
           added.map(function(x){ return (x.c < 0 ? "−" : "") + cents(Math.abs(x.c)); }).join(" + ") +
-          ' &nbsp;<button type="button" id="undoAdd" style="background:none;border:0;text-decoration:underline;color:var(--ink-soft);font-family:inherit">annulla ultimo</button>';
+          ' &nbsp;<button type="button" id="undoAdd" style="background:none;border:0;text-decoration:underline;color:var(--ink-soft);font-family:inherit">撤销上一项</button>';
         line.querySelector("#undoAdd").addEventListener("click", function(){
           var last = added.pop();
           if(!last) return;
@@ -550,13 +591,13 @@ function openAmount(id){
         });
       });
       p.querySelector("#amtDebt").addEventListener("click", function(){
-        if(!value()){ toast("Scrivi prima l'importo."); return; }
+        if(!value()){ toast("请先输入金额。"); return; }
         added.push(addEntry(d, value(), ""));
         digits = ""; refresh();
       });
       p.querySelector("#amtPay").addEventListener("click", function(){
-        if(!value()){ toast("Scrivi prima l'importo."); return; }
-        added.push(addEntry(d, -value(), "Pagamento"));
+        if(!value()){ toast("请先输入金额。"); return; }
+        added.push(addEntry(d, -value(), "付款"));
         digits = ""; refresh();
       });
       p.querySelector("#amtMore").addEventListener("click", function(){
@@ -579,26 +620,26 @@ function openDetail(id){
     ? d.entries.map(function(x){
         return '<li><span class="d">' + day(x.t) + (x.n ? " · " + x.n : "") + "</span>" +
           '<span class="v' + (x.c < 0 ? " pay" : "") + '">' + (x.c < 0 ? "−" : "") + cents(Math.abs(x.c)) + "</span>" +
-          '<button class="x" data-e="' + x.id + '" aria-label="Togli questa voce">✕</button></li>';
+          '<button class="x" data-e="' + x.id + '" aria-label="删除此项">✕</button></li>';
       }).join("")
-    : '<li><span class="d">Nessun debito aperto.</span></li>';
+    : '<li><span class="d">没有未结欠款。</span></li>';
 
   var hist = d.history.length
-    ? '<p class="sub" style="margin-top:14px">Saldi precedenti: ' +
+    ? '<p class="sub" style="margin-top:14px">以前结清：' +
         d.history.slice(-6).map(function(h){ return day(h.t) + " (" + cents(h.c) + ")"; }).join(" · ") + "</p>"
     : "";
 
   openPanel(
-    "<h2>" + (d.name.type === "text" ? d.name.value : "Conto") + "</h2>" +
+    "<h2>" + (d.name.type === "text" ? d.name.value : "账单") + "</h2>" +
     '<div id="panelName" style="margin:2px 0 8px"></div>' +
-    '<p class="sub">Totale: <b style="color:var(--debt);font-family:\'IBM Plex Mono\',monospace">' + eur(t) + "</b></p>" +
+    '<p class="sub">合计：<b style="color:var(--debt);font-family:\'IBM Plex Mono\',monospace">' + eur(t) + "</b></p>" +
     '<ul class="entrylist">' + list + "</ul>" + hist +
     '<div class="stack">' +
-      '<button class="btn primary" id="dAdd" data-autofocus>+ Segna un debito</button>' +
-      '<button class="btn pay" id="dSettle">Ha pagato tutto — azzera il conto</button>' +
-      '<button class="btn" id="dRename">Riscrivi il nome</button>' +
-      '<button class="btn danger" id="dDelete">Elimina dal registro</button>' +
-      '<button class="btn" id="dClose">Chiudi</button>' +
+      '<button class="btn primary" id="dAdd" data-autofocus>+ 记一笔欠款</button>' +
+      '<button class="btn pay" id="dSettle">已全部付清——账单清零</button>' +
+      '<button class="btn" id="dRename">重写名字</button>' +
+      '<button class="btn danger" id="dDelete">从账本中删除</button>' +
+      '<button class="btn" id="dClose">关闭</button>' +
     "</div>",
     function(p){
       panel.dataset.detail = id;
@@ -610,24 +651,21 @@ function openDetail(id){
       p.querySelector("#dClose").addEventListener("click", closePanel);
       p.querySelector("#dRename").addEventListener("click", function(){ openPad(d); });
       p.querySelector("#dSettle").addEventListener("click", function(){
-        if(!d.entries.length){ toast("Il conto è già a zero."); return; }
+        if(!d.entries.length){ toast("账单已经是零。"); return; }
         ask({
-          title:"Azzerare il conto?", ok:"Sì, ha pagato",
-          text:"Il totale di " + eur(t) + " viene messo nello storico e la riga torna a zero."
+          title:"账单清零？", ok:"是，已付清",
+          text:"合计 " + eur(t) + " 会记入历史，这一行恢复为零。"
         }).then(function(yes){
           if(!yes) return;
           d.history.push({t:Date.now(), c:t});
           d.entries = [];
           save(); render(); closePanel();
-          toast("Conto azzerato.");
+          toast("账单已清零。");
         });
       });
       p.querySelector("#dDelete").addEventListener("click", function(){
-        ask({
-          title:"Togliere questa persona dal registro?", ok:"Elimina", danger:true,
-          text:"Sparisce il nome e tutto il suo conto. Non si può annullare."
-        }).then(function(yes){
-          if(!yes) return;
+        askPassword("从账本中删除这个人？").then(function(ok){
+          if(!ok) return;
           state.debtors = state.debtors.filter(function(x){ return x.id !== id; });
           save(); render(); closePanel();
         });
@@ -637,33 +675,21 @@ function openDetail(id){
 }
 
 /* ============ prezzi, backup, ripristino ============ */
-function openSettings(focusBackup){
+function openSettings(){
   openPanel(
-    "<h2>Prezzi e backup</h2>" +
-    '<p class="sub">I prezzi sono i tasti veloci che vedi quando segni un debito.</p>' +
+    "<h2>价格</h2>" +
+    '<p class="sub">价格是记欠款时看到的快捷按钮。</p>' +
     '<div id="presetEditor"></div>' +
-    '<button class="btn" id="addPreset" style="width:100%">+ Aggiungi voce</button>' +
-    '<div class="divider"></div>' +
-    "<h2>Backup</h2>" +
-    '<p class="sub">Copia questo testo e tienilo da parte (email, note). Serve a rimettere tutto a posto se cambi telefono o cancelli i dati del browser.</p>' +
-    '<textarea class="backup" id="backupOut" readonly></textarea>' +
-    '<div class="panel-actions"><button class="btn" id="copyBackup">Copia il backup</button></div>' +
-    '<div class="divider"></div>' +
-    "<h2>Ripristino</h2>" +
-    '<p class="sub">Incolla qui un backup salvato prima.</p>' +
-    '<textarea class="backup" id="backupIn" placeholder="Incolla qui il testo del backup"></textarea>' +
-    '<div class="panel-actions"><button class="btn" id="restoreBackup">Ripristina</button></div>' +
-    '<div class="divider"></div>' +
-    '<div class="panel-actions">' +
-      '<button class="btn danger" id="wipeAll">Svuota tutto il registro</button>' +
-      '<button class="btn primary" id="setDone">Chiudi</button>' +
+    '<button class="btn" id="addPreset" style="width:100%">+ 添加项目</button>' +
+    '<div class="panel-actions sticky">' +
+      '<button class="btn primary" id="setDone">关闭</button>' +
     "</div>",
     function(p){
       var ed = p.querySelector("#presetEditor");
 
       var opzioniCategorie = CATEGORIE.map(function(c){
         return '<option value="' + c.id + '">' + esc(c.n) + "</option>";
-      }).join("") + '<option value="altro">Altro</option>';
+      }).join("") + '<option value="altro">其他</option>';
 
       function drawPresets(){
         ed.innerHTML = "";
@@ -671,14 +697,14 @@ function openSettings(focusBackup){
           var row = document.createElement("div");
           row.className = "preseted";
           row.innerHTML =
-            '<input class="n" value="' + String(pr.n).replace(/"/g,"&quot;") + '" aria-label="Nome voce">' +
-            '<input class="p" value="' + cents(pr.c) + '" inputmode="decimal" aria-label="Prezzo">' +
-            '<select class="cat" aria-label="Sezione">' + opzioniCategorie + "</select>" +
-            '<button class="iconbtn" aria-label="Togli voce">✕</button>';
+            '<input class="n" value="' + String(pr.n).replace(/"/g,"&quot;") + '" aria-label="项目名称">' +
+            '<input class="p" value="' + cents(pr.c) + '" inputmode="decimal" aria-label="价格">' +
+            '<select class="cat" aria-label="分类">' + opzioniCategorie + "</select>" +
+            '<button class="iconbtn" aria-label="删除项目">✕</button>';
           var inputs = row.querySelectorAll("input");
           var sel = row.querySelector("select");
           sel.value = pr.cat || "altro";
-          inputs[0].addEventListener("change", function(){ pr.n = this.value.trim() || "Voce"; save(); });
+          inputs[0].addEventListener("change", function(){ pr.n = this.value.trim() || "项目"; save(); });
           inputs[1].addEventListener("change", function(){
             var v = parseFloat(this.value.replace(",", "."));
             pr.c = isFinite(v) && v > 0 ? Math.round(v * 100) : pr.c;
@@ -687,8 +713,11 @@ function openSettings(focusBackup){
           });
           sel.addEventListener("change", function(){ pr.cat = this.value; save(); });
           row.querySelector("button").addEventListener("click", function(){
-            state.presets = state.presets.filter(function(x){ return x.id !== pr.id; });
-            save(); drawPresets();
+            askPassword("删除“" + esc(pr.n) + "”？").then(function(ok){
+              if(!ok) return;
+              state.presets = state.presets.filter(function(x){ return x.id !== pr.id; });
+              save(); drawPresets();
+            });
           });
           ed.appendChild(row);
         });
@@ -696,10 +725,31 @@ function openSettings(focusBackup){
       drawPresets();
 
       p.querySelector("#addPreset").addEventListener("click", function(){
-        state.presets.push({id:uid(), n:"Nuova voce", c:100, cat:"altro"});
+        state.presets.push({id:uid(), n:"新项目", c:100, cat:"altro"});
         save(); drawPresets();
       });
 
+      p.querySelector("#setDone").addEventListener("click", closePanel);
+    }
+  );
+}
+
+function openBackup(){
+  openPanel(
+    "<h2>备份</h2>" +
+    '<p class="sub">复制这段文字并保存好（邮件、备忘录）。换手机或清除浏览器数据后，可以用它恢复全部内容。</p>' +
+    '<textarea class="backup" id="backupOut" readonly></textarea>' +
+    '<div class="panel-actions"><button class="btn" id="copyBackup">复制备份</button></div>' +
+    '<div class="divider"></div>' +
+    "<h2>恢复</h2>" +
+    '<p class="sub">在这里粘贴之前保存的备份。</p>' +
+    '<textarea class="backup" id="backupIn" placeholder="在这里粘贴备份文字"></textarea>' +
+    '<div class="panel-actions"><button class="btn" id="restoreBackup">恢复</button></div>' +
+    '<div class="panel-actions sticky">' +
+      '<button class="btn danger" id="wipeAll">清空整个账本</button>' +
+      '<button class="btn primary" id="setDone">关闭</button>' +
+    "</div>",
+    function(p){
       var out = p.querySelector("#backupOut");
       out.value = JSON.stringify(state);
       p.querySelector("#copyBackup").addEventListener("click", function(){
@@ -707,22 +757,22 @@ function openSettings(focusBackup){
         var done = false;
         try{ done = document.execCommand("copy"); }catch(err){ done = false; }
         if(!done && navigator.clipboard){
-          navigator.clipboard.writeText(out.value).then(function(){ toast("Backup copiato."); },
-                                                       function(){ toast("Seleziona il testo e copialo a mano."); });
+          navigator.clipboard.writeText(out.value).then(function(){ toast("备份已复制。"); },
+                                                       function(){ toast("请选中文字后手动复制。"); });
           return;
         }
-        toast(done ? "Backup copiato." : "Seleziona il testo e copialo a mano.");
+        toast(done ? "备份已复制。" : "请选中文字后手动复制。");
       });
 
       p.querySelector("#restoreBackup").addEventListener("click", function(){
         var raw = p.querySelector("#backupIn").value.trim();
-        if(!raw){ toast("Incolla prima il backup."); return; }
+        if(!raw){ toast("请先粘贴备份。"); return; }
         var data;
         try{ data = JSON.parse(raw); }catch(err){ data = null; }
-        if(!data || !Array.isArray(data.debtors)){ toast("Questo testo non è un backup valido."); return; }
+        if(!data || !Array.isArray(data.debtors)){ toast("这段文字不是有效的备份。"); return; }
         ask({
-          title:"Ripristinare il backup?", ok:"Ripristina", danger:true,
-          text:"Il registro di adesso viene sostituito da quello del backup (" + data.debtors.length + " persone)."
+          title:"恢复备份？", ok:"恢复", danger:true,
+          text:"当前账本将被备份替换（" + data.debtors.length + " 人）。"
         }).then(function(yes){
           if(!yes) return;
           if(!Array.isArray(data.presets) || !data.presets.length){ data.presets = DEFAULT_PRESETS.slice(); }
@@ -730,24 +780,23 @@ function openSettings(focusBackup){
           data.debtors.forEach(function(x){ x.entries = x.entries || []; x.history = x.history || []; });
           state = data;
           save(); render(); closePanel();
-          toast("Registro ripristinato.");
+          toast("账本已恢复。");
         });
       });
 
       p.querySelector("#wipeAll").addEventListener("click", function(){
         ask({
-          title:"Svuotare tutto il registro?", ok:"Svuota", danger:true,
-          text:"Spariscono tutti i nomi e tutti i conti. Fai prima un backup se ti serve."
+          title:"清空整个账本？", ok:"清空", danger:true,
+          text:"所有名字和账单都会消失。如有需要，请先做备份。"
         }).then(function(yes){
           if(!yes) return;
           startFresh(false);
           closePanel();
-          toast("Registro svuotato.");
+          toast("账本已清空。");
         });
       });
 
       p.querySelector("#setDone").addEventListener("click", closePanel);
-      if(focusBackup) p.querySelector("#backupOut").scrollIntoView({block:"center"});
     }
   );
 }
@@ -843,25 +892,25 @@ function aggiornaStatoSync(){
   var tasto = document.getElementById("btnSync");
   if(sync.stato === "collegato"){
     nota.textContent = sync.offline
-      ? "Sincronizzato · ora sei offline, le modifiche partono appena torna la rete."
-      : "Sincronizzato con gli altri telefoni · " + sync.codice;
+      ? "已同步 · 现在离线，网络恢复后会自动上传修改。"
+      : "已与其他手机同步 · " + sync.codice;
     tasto.style.color = sync.offline ? "var(--ink-soft)" : "var(--paid)";
     tasto.style.borderColor = sync.offline ? "var(--line)" : "var(--paid)";
   }else if(sync.stato === "collegamento"){
-    nota.textContent = "Collegamento in corso…";
+    nota.textContent = "正在连接…";
     tasto.style.color = "var(--ink-soft)";
   }else if(sync.stato === "errore"){
-    nota.textContent = "Sincronizzazione ferma — apri ☁ per vedere perché.";
+    nota.textContent = "同步已停止——点击 ☁ 查看原因。";
     tasto.style.color = "var(--debt)";
     tasto.style.borderColor = "var(--debt)";
   }else{
-    nota.textContent = storageOk ? "I dati restano su questo dispositivo." : "Attenzione: questo browser non salva i dati. Usa il backup.";
+    nota.textContent = storageOk ? "数据保存在本设备上。" : "注意：此浏览器不保存数据，请使用备份。";
     tasto.style.color = "";
     tasto.style.borderColor = "";
   }
 }
 function connettiSync(codice){
-  if(!window.RegistroSync){ toast("Sincronizzazione non disponibile qui."); return; }
+  if(!window.RegistroSync){ toast("此处无法同步。"); return; }
   sync.stato = "collegamento";
   aggiornaStatoSync();
   window.RegistroSync.connetti(codice, {
@@ -914,48 +963,48 @@ function scollegaSync(){
   aggiornaStatoSync();
 }
 function spiegaErrore(codice){
-  if(codice === "accesso_anonimo") return "Firebase rifiuta l'accesso: attiva <b>Authentication → Sign-in method → Anonymous</b> nella console.";
-  if(codice === "non_configurato") return "Manca la configurazione: compila <code>firebase-config.js</code> seguendo SINCRONIZZAZIONE.md.";
-  if(codice === "permission-denied") return "Le regole di Firestore bloccano la lettura: ricontrolla di averle incollate come da SINCRONIZZAZIONE.md.";
-  if(codice === "unavailable") return "Firebase non risponde — probabilmente manca la rete. Il registro intanto funziona lo stesso.";
-  return "Firebase non si carica (" + codice + "). Se hai aperto il file direttamente dal telefono, la sincronizzazione funziona solo dal sito.";
+  if(codice === "accesso_anonimo") return "Firebase 拒绝访问：请在控制台启用 <b>Authentication → Sign-in method → Anonymous</b>。";
+  if(codice === "non_configurato") return "缺少配置：请按照 SINCRONIZZAZIONE.md 填写 <code>firebase-config.js</code>。";
+  if(codice === "permission-denied") return "Firestore 规则阻止了读取：请检查是否已按 SINCRONIZZAZIONE.md 粘贴规则。";
+  if(codice === "unavailable") return "Firebase 没有响应——可能没有网络。账本仍可正常使用。";
+  return "Firebase 无法加载（" + codice + "）。如果直接在手机上打开文件，同步只能在网站上使用。";
 }
 function openSync(){
   var disponibile = !!(window.RegistroSync && window.RegistroSync.configurata());
-  var testa = "<h2>Sincronizzazione</h2>";
+  var testa = "<h2>同步</h2>";
   var corpo;
 
   if(!disponibile){
-    corpo = '<p class="sub">Per far vedere lo stesso registro su due telefoni serve un progetto Firebase gratuito: i passaggi sono in <b>SINCRONIZZAZIONE.md</b>, dentro il progetto.</p>' +
-      '<p class="sub">Finché non è configurata, ogni telefono tiene il suo registro e si travasa con <b>Backup / Ripristino</b>.</p>' +
-      (window.RegistroSync ? "" : '<p class="sub">Nota: funziona solo aprendo il <b>sito</b> (GitHub Pages), non il file scaricato.</p>');
+    corpo = '<p class="sub">要在两部手机上看到同一个账本，需要一个免费的 Firebase 项目：步骤在项目中的 <b>SINCRONIZZAZIONE.md</b>。</p>' +
+      '<p class="sub">未配置之前，每部手机各有自己的账本，可以用<b>备份 / 恢复</b>转移。</p>' +
+      (window.RegistroSync ? "" : '<p class="sub">注意：只有打开<b>网站</b>（GitHub Pages）才能使用，下载的文件不行。</p>');
   }else if(sync.stato === "collegato"){
     var link = location.origin + location.pathname + "#r=" + sync.codice;
     corpo =
       '<p class="sub">' + (sync.offline
-        ? "Collegato, ma ora <b>senza rete</b>: continua a segnare, parte tutto appena torna la linea."
-        : "Questo telefono è <b>collegato</b>. Quello che segni qui compare sull'altro in pochi secondi.") + "</p>" +
-      '<p class="sub">Codice del registro:</p>' +
+        ? "已连接，但现在<b>没有网络</b>：请继续记账，网络恢复后会自动上传。"
+        : "这部手机已<b>连接</b>。你在这里记的内容几秒钟后会出现在另一部手机上。") + "</p>" +
+      '<p class="sub">账本代码：</p>' +
       '<div class="amount-display" style="font-size:17px;text-align:left;word-break:break-all">' + sync.codice + "</div>" +
       '<textarea class="backup" id="syncLink" readonly style="min-height:70px">' + link + "</textarea>" +
-      '<div class="panel-actions"><button class="btn" id="syncCopy">Copia il link per l\'altro telefono</button></div>' +
-      '<p class="sub">Sull\'altro telefono: apri il link, poi <i>Aggiungi a schermata Home</i>. Chi ha questo link vede e modifica il registro, quindi mandalo solo a chi deve.</p>' +
+      '<div class="panel-actions"><button class="btn" id="syncCopy">复制给另一部手机的链接</button></div>' +
+      '<p class="sub">在另一部手机上：打开链接，然后<i>添加到主屏幕</i>。拿到此链接的人可以查看和修改账本，请只发给需要的人。</p>' +
       '<div class="divider"></div>' +
-      '<div class="panel-actions"><button class="btn danger" id="syncOff">Scollega questo telefono</button></div>';
+      '<div class="panel-actions"><button class="btn danger" id="syncOff">断开这部手机</button></div>';
   }else{
     corpo =
       (sync.stato === "errore" ? '<p class="sub" style="color:var(--debt)">' + spiegaErrore(sync.errore) + "</p>" : "") +
-      '<p class="sub">Un solo registro condiviso: quello che segna uno lo vede l\'altro. Funziona anche senza rete e si riallinea dopo.</p>' +
+      '<p class="sub">共用一个账本：一个人记的，另一个人也能看到。没有网络也能用，恢复后会自动对齐。</p>' +
       '<div class="stack">' +
-        '<button class="btn primary" id="syncNew">Crea il registro condiviso</button>' +
+        '<button class="btn primary" id="syncNew">创建共享账本</button>' +
       "</div>" +
       '<div class="divider"></div>' +
-      '<p class="sub">Oppure entra in un registro già creato, incollando il codice o il link ricevuto:</p>' +
-      '<textarea class="backup" id="syncCode" placeholder="reg-… oppure il link" style="min-height:64px"></textarea>' +
-      '<div class="panel-actions"><button class="btn" id="syncJoin">Entra nel registro</button></div>';
+      '<p class="sub">或者粘贴收到的代码或链接，加入已有的账本：</p>' +
+      '<textarea class="backup" id="syncCode" placeholder="reg-… 或链接" style="min-height:64px"></textarea>' +
+      '<div class="panel-actions"><button class="btn" id="syncJoin">加入账本</button></div>';
   }
 
-  openPanel(testa + corpo + '<div class="panel-actions"><button class="btn primary" id="syncDone" data-autofocus>Chiudi</button></div>',
+  openPanel(testa + corpo + '<div class="panel-actions"><button class="btn primary" id="syncDone" data-autofocus>关闭</button></div>',
     function(p){
       panel.dataset.sync = "1";
       p.querySelector("#syncDone").addEventListener("click", closePanel);
@@ -966,7 +1015,7 @@ function openSync(){
       var join = p.querySelector("#syncJoin");
       if(join) join.addEventListener("click", function(){
         var codice = window.RegistroSync.pulisciCodice(p.querySelector("#syncCode").value);
-        if(codice.length < 6){ toast("Codice non valido."); return; }
+        if(codice.length < 6){ toast("代码无效。"); return; }
         connettiSync(codice);
       });
       var copia = p.querySelector("#syncCopy");
@@ -976,18 +1025,18 @@ function openSync(){
         var fatto = false;
         try{ fatto = document.execCommand("copy"); }catch(err){ fatto = false; }
         if(!fatto && navigator.clipboard){
-          navigator.clipboard.writeText(campo.value).then(function(){ toast("Link copiato."); },
-                                                         function(){ toast("Seleziona il link e copialo a mano."); });
+          navigator.clipboard.writeText(campo.value).then(function(){ toast("链接已复制。"); },
+                                                         function(){ toast("请选中链接后手动复制。"); });
           return;
         }
-        toast(fatto ? "Link copiato." : "Seleziona il link e copialo a mano.");
+        toast(fatto ? "链接已复制。" : "请选中链接后手动复制。");
       });
       var off = p.querySelector("#syncOff");
       if(off) off.addEventListener("click", function(){
         ask({
-          title:"Scollegare questo telefono?", ok:"Scollega", danger:true,
-          text:"Il registro resta sul telefono e online, ma smettono di aggiornarsi a vicenda. Puoi ricollegarti con lo stesso codice."
-        }).then(function(si){ if(si){ scollegaSync(); closePanel(); toast("Telefono scollegato."); } });
+          title:"断开这部手机？", ok:"断开", danger:true,
+          text:"账本会保留在手机和线上，但不再互相更新。你可以用同一个代码重新连接。"
+        }).then(function(si){ if(si){ scollegaSync(); closePanel(); toast("已断开。"); } });
       });
     }
   );
@@ -1006,12 +1055,12 @@ if(presetsRinnovati) saveLocale();
 render();
 
 document.getElementById("btnNew").addEventListener("click", function(){ openPad(null); });
-document.getElementById("btnSettings").addEventListener("click", function(){ openSettings(false); });
-document.getElementById("btnBackupFoot").addEventListener("click", function(){ openSettings(true); });
+document.getElementById("btnSettings").addEventListener("click", function(){ openSettings(); });
+document.getElementById("btnBackupFoot").addEventListener("click", function(){ openBackup(); });
 document.getElementById("btnPrint").addEventListener("click", function(){ window.print(); });
 document.getElementById("btnSync").addEventListener("click", openSync);
 if(!storageOk){
-  document.getElementById("savedNote").textContent = "Attenzione: questo browser non salva i dati. Usa il backup.";
+  document.getElementById("savedNote").textContent = "注意：此浏览器不保存数据，请使用备份。";
 }
 
 /* si riaggancia da solo al registro condiviso: link #r=… o ultimo codice usato */

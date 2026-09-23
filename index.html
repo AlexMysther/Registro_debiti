@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="it">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Registro dei Debiti</title>
+<title>欠款账本</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Caveat:wght@600&family=IBM+Plex+Mono:wght@500;600&display=swap">
@@ -14,27 +14,27 @@
 <header class="topbar">
   <div class="topbar-in">
     <div class="brand">
-      <b>Registro dei debiti</b>
-      <span id="subtitle">Il quaderno del bar</span>
+      <b>欠款账本</b>
+      <span id="subtitle">酒吧的账本</span>
     </div>
-    <div class="grand"><span id="grandTotal">0,00 €</span><small id="grandLabel">totale da incassare</small></div>
-    <button class="iconbtn" id="btnSync" title="Sincronizzazione fra telefoni" aria-label="Sincronizzazione fra telefoni">☁</button>
-    <button class="iconbtn" id="btnPrint" title="Stampa il registro" aria-label="Stampa il registro">⎙</button>
-    <button class="iconbtn" id="btnSettings" title="Prezzi e backup" aria-label="Prezzi e backup">☰</button>
+    <div class="grand"><span id="grandTotal">0.00 €</span><small id="grandLabel">待收合计</small></div>
+    <button class="iconbtn" id="btnSync" title="手机间同步" aria-label="手机间同步">☁</button>
+    <button class="iconbtn" id="btnPrint" title="打印账本" aria-label="打印账本">⎙</button>
+    <button class="iconbtn" id="btnSettings" title="价格" aria-label="价格">☰</button>
   </div>
 </header>
 
 <main class="sheet" id="sheet">
-  <div class="sheet-head"><span>Nome</span><span>Conto</span><span>Totale</span></div>
+  <div class="sheet-head"><span>姓名</span><span>账单</span><span>合计</span></div>
   <div id="rows"></div>
-  <div class="totalrow"><b>Totale registro</b><span class="v" id="sheetTotal">0,00 €</span></div>
+  <div class="totalrow"><b>账本合计</b><span class="v" id="sheetTotal">0.00 €</span></div>
 </main>
 
-<div class="newrow"><button class="bigbtn" id="btnNew">+ Nuovo debitore — scrivi il nome a mano</button></div>
+<div class="newrow"><button class="bigbtn" id="btnNew">+ 新欠款人——手写名字</button></div>
 
 <footer class="foot">
-  <span id="savedNote">I dati restano su questo dispositivo.</span>
-  <button id="btnBackupFoot">Backup / ripristino</button>
+  <span id="savedNote">数据保存在本设备上。</span>
+  <button id="btnBackupFoot">备份 / 恢复</button>
 </footer>
 
 <script src="firebase-config.js"></script>
